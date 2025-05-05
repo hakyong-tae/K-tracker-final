@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>K-TRACKER | 대회 목록</title>
+  <link rel="icon" href="/assets/k-tracker.ico" type="image/x-icon" />
+  <style>
+    body { font-family: sans-serif; padding: 2rem; text-align: center; background: #f9f9f9; }
+    h1 { font-size: 1.8rem; margin-bottom: 2rem; }
+    .race-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; max-width: 1000px; margin: 0 auto; }
+    .race-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: left;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      transition: transform 0.2s ease;
+    }
+    .race-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .race-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #007acc;
+      margin-bottom: 0.5rem;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .race-meta {
+      font-size: 0.95rem;
+      color: #666;
+      line-height: 1.4;
+    }
+    footer a:hover {
+      color: #ffc107 !important;
+      text-decoration: none;
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<meta name="description" content="현재 진행 중이거나 예정된 마라톤 대회 목록을 확인하고 원하는 대회를 선택해 그룹을 만들 수 있습니다.">
+<meta property="og:title" content="K-TRACKER - 마라톤 대회 목록">
+<meta property="og:description" content="대회 선택 후 그룹 생성 가능. myresult.co.kr, SmartChip 지원.">
+<meta property="og:url" content="https://k-tracker.onrender.com/event.html">
+<meta property="og:image" content="https://k-tracker.onrender.com/images/og-event.jpg">
+
+</head>
+<body>
+
+<h1><img src="/assets/k-tracker.ico" width="24" style="vertical-align: middle; margin-right: 8px;"> K-TRACKER 대회 목록</h1>
+<h2><a href="https://myresult.co.kr/" target="_blank">MyResult 대회</a></h2>
+<div id="myresult-list" class="race-list"></div>
+
+<h2><a href="https://smartchip.co.kr/" target="_blank">SmartChip 대회</a></h2>
+<div id="smartchip-list" class="race-list"></div>
+
+<p>불러오는 중...</p>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  loadMyResultRaces();
+  loadSmartChipRaces();
+});
+
+// 한국 시간 (KST) 기준 오늘 날짜 구하기
+function getTodayKST() {
+  const now = new Date();
+  now.setHours(now.getHours() + 9); // UTC +9시간 = KST
+  return now.toISOString().slice(0, 10);
+}
+
+async function loadMyResultRaces() {
+  const res = await fetch("https://render-mr-api.fly.dev/api/proxy/myresult-races");
+  const data = await res.json();
+  const races = data.results;
+  const list = document.getElementById("myresult-list");
+
+  list.innerHTML = "";
+
+  races.slice(0, 6).forEach(race => {
+    const card = document.createElement("div");
+    card.className = "race-card";
+
+    const title = document.createElement("a");
+    title.className = "race-title";
+    title.href = `group_register.html?eventId=${race.id}&source=myresult`;
+    title.textContent = race.name;
+
+    const meta = document.createElement("div");
+    meta.className = "race-meta";
+    meta.innerHTML = `
+      <div>📅 <strong>${race.date || '날짜 정보 없음'}</strong></div>
+      <div>📍 ${race.place_addr || '장소 정보 없음'}</div>
+      <div><img src="https://myresult.co.kr/favicon.ico" width="14"> [MyResult]</div>
+    `;
+
+    card.appendChild(title);
+    card.appendChild(meta);
+    list.appendChild(card);
+  });
+}
+async function loadSmartChipRaces() {
+  const today = getTodayKST();
+  const res = await fetch(`https://cdn.jsdelivr.net/gh/hakyong-tae/smartchip-crawler@main/output/events_${today}.json`);
+  const data = await res.json();
+
+  const list = document.getElementById("smartchip-list");
+  list.innerHTML = "";
+
+  if (data.length === 0) {
+    list.innerHTML = "<p>오늘 등록된 SmartChip 대회가 없습니다.</p>";
+    return;
+  }
+
+  data.slice().reverse().slice(0, 6).forEach(race => {
+    const card = document.createElement("div");
+    card.className = "race-card";
+
+    const title = document.createElement("a");
+    title.className = "race-title";
+    title.href = `group_register.html?eventId=${race.usedata}&source=smartchip`;
+    title.textContent = race["대회명"] || "정보 없음"; 
+
+    const meta = document.createElement("div");
+    meta.className = "race-meta";
+    meta.innerHTML = `
+      <div>📅 <strong>${race["대회일자"] || "정보 없음"}</strong></div>
+      <div>📍 ${race["대회장소"] || "정보 없음"}</div>
+      <div><img src="https://smartchip.co.kr/favicon.ico" width="14"> [SmartChip]</div>
+    `;
+
+    card.appendChild(title);
+    card.appendChild(meta);
+    list.appendChild(card);
+  });
+}
+
+</script>
+
+<p style="font-size:12px; color:gray; margin-top:20px;">
+※ 이 대회 목록은 <strong>SmartChip</strong> 및 <strong>MyResult</strong> 기록 제공 사이트에서 가져온 정보를 기반으로 하며, 일부 정보는 제공되지 않을 수 있습니다.
+</p>
+
+<footer class="footer mt-auto py-3 bg-dark text-white text-center">
+  <div class="container small">
+    Made by <strong>hakyong-tae</strong><br />
+    <a href="https://x.com/yong_planet" target="_blank" class="text-white mx-2"><i class="fab fa-x-twitter"></i> X</a>
+    <a href="https://www.instagram.com/hy.tae/" target="_blank" class="text-white mx-2"><i class="fab fa-instagram"></i> Instagram</a>
+    <a href="https://github.com/hakyong-tae" target="_blank" class="text-white mx-2"><i class="fab fa-github"></i> GitHub</a>
+    <a href="mailto:hy.tae@kakao.com" class="text-white mx-2"><i class="fas fa-envelope"></i> Email</a>
+  </div>
+</footer>
+
+</body>
+</html>
